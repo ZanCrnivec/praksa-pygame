@@ -11,29 +11,26 @@ clock = pygame.time.Clock()
 
 player_x, player_y = WIDTH // 2, HEIGHT // 2
 player_speed = 5
-dash_speed = 50  # Dash speed
-dash_cooldown = 500  # Cooldown time in milliseconds
-last_dash_time = 0  # Last time the player dashed
+dash_speed = 50
+dash_cooldown = 500
+last_dash_time = 0
 is_dashing = False
-dash_direction = (0, 0)  # Direction of the dash
+dash_direction = (0, 0)
 
 camera_x, camera_y = player_x, player_y
 
-# Thrust variables
 sword_thrust = False
 thrust_velocity = 0
 thrust_distance = 0
+sword_hit_enemies = set()
 
-# For world sag effect
 world_offset_x = 0
 world_offset_y = 0
 
 stones = [(random.randint(-2000, 2000), random.randint(-2000, 2000), random.randint(10, 50)) for _ in range(80)]
 
-# Player sword damage
-sword_damage = 20
+sword_damage = 1
 
-# Enemy Class
 class Enemy:
     def __init__(self, x, y, speed, damage, color, size, hp):
         self.x = x
@@ -44,9 +41,12 @@ class Enemy:
         self.size = size
         self.hp = hp
         self.knockback = 0
+        self.knockback_velocity = 0
+        self.knockback_direction = (0, 0)
+        self.knockback_deceleration = 0.9
+        self.id = id(self)
 
     def move_towards_player(self, player_x, player_y):
-        # Calculate the direction vector towards the player
         dx = player_x - self.x
         dy = player_y - self.y
         distance = math.sqrt(dx**2 + dy**2)
@@ -54,20 +54,27 @@ class Enemy:
         if distance != 0:
             dx /= distance
             dy /= distance
-        
-        # Move the enemy towards the player
-        self.x += dx * self.speed
-        self.y += dy * self.speed
 
-        # Apply knockback effect if any
         if self.knockback > 0:
-            self.x += dx * self.knockback
-            self.y += dy * self.knockback
-            self.knockback = 1  # Reduce knockback over time
+            self.x += self.knockback_direction[0] * self.knockback_velocity
+            self.y += self.knockback_direction[1] * self.knockback_velocity
+            self.knockback_velocity *= self.knockback_deceleration
+            if self.knockback_velocity < 1:
+                self.knockback = 0
+        else:
+            self.x += dx * self.speed
+            self.y += dy * self.speed
 
-    def take_damage(self, damage):
+    def take_damage(self, damage, player_x, player_y):
         self.hp -= damage
-        self.knockback = 10  # Apply knockback when hit
+        if self.hp > 0:
+            knockback_dx = self.x - player_x
+            knockback_dy = self.y - player_y
+            knockback_distance = math.sqrt(knockback_dx**2 + knockback_dy**2)
+            if knockback_distance != 0:
+                self.knockback_direction = (knockback_dx / knockback_distance, knockback_dy / knockback_distance)
+            self.knockback = 10
+            self.knockback_velocity = 10
 
     def draw(self):
         pygame.draw.circle(screen, self.color, (int(self.x - camera_x + WIDTH // 2), int(self.y - camera_y + HEIGHT // 2)), self.size)
@@ -75,22 +82,18 @@ class Enemy:
     def is_alive(self):
         return self.hp > 0
 
-# Enemy spawn timer
-enemy_spawn_time = 3000  # Time in milliseconds (3 seconds)
+enemy_spawn_time = 3000
 last_spawn_time = 0
 enemies = []
 
 def spawn_enemy():
-    # Randomly spawn enemies at a certain position with random attributes
     x = random.randint(-2000, 2000)
     y = random.randint(-2000, 2000)
-    speed = random.uniform(0.5, 3)  # Random speed for the enemy
-    damage = random.randint(10, 20)  # Random damage value
-    color = (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255))  # Random color
-    size = random.randint(30, 50)  # Random size
-    hp = random.randint(50, 100)  # Random HP for the enemy
-    
-    # Create a new enemy and add it to the list
+    speed = random.uniform(0.5, 3)
+    damage = random.randint(10, 20)
+    color = (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255))
+    size = random.randint(30, 50)
+    hp = 3
     enemy = Enemy(x, y, speed, damage, color, size, hp)
     enemies.append(enemy)
 
@@ -102,15 +105,16 @@ def handle_movement(keys):
     if keys[pygame.K_d]: player_x += player_speed
 
 def update_sword(player_draw_x, player_draw_y):
-    global sword_thrust, thrust_velocity, thrust_distance
+    global sword_thrust, thrust_velocity, thrust_distance, sword_hit_enemies
 
     if sword_thrust:
         thrust_distance += thrust_velocity
-        thrust_velocity -= 1.5  # faster deceleration
+        thrust_velocity -= 1.5
         if thrust_distance <= 0:
             sword_thrust = False
             thrust_velocity = 0
             thrust_distance = 0
+            sword_hit_enemies.clear()
 
     mouse_x, mouse_y = pygame.mouse.get_pos()
     angle = math.atan2(mouse_x - player_draw_x, mouse_y - player_draw_y)
@@ -125,12 +129,14 @@ def update_sword(player_draw_x, player_draw_y):
     )
     screen.blit(sword_rotated, sword_rect.topleft)
 
-    # Check if sword collides with enemies
-    sword_rect_center = sword_rect.center
-    for enemy in enemies:
-        enemy_rect = pygame.Rect(int(enemy.x - camera_x + WIDTH // 2 - enemy.size), int(enemy.y - camera_y + HEIGHT // 2 - enemy.size), enemy.size * 2, enemy.size * 2)
-        if sword_rect.colliderect(enemy_rect) and sword_thrust:
-            enemy.take_damage(sword_damage)
+    if sword_thrust and thrust_velocity > 0:
+        for enemy in enemies:
+            enemy_rect = pygame.Rect(int(enemy.x - camera_x + WIDTH // 2 - enemy.size),
+                                     int(enemy.y - camera_y + HEIGHT // 2 - enemy.size),
+                                     enemy.size * 2, enemy.size * 2)
+            if sword_rect.colliderect(enemy_rect) and enemy.id not in sword_hit_enemies:
+                enemy.take_damage(sword_damage, player_x, player_y)
+                sword_hit_enemies.add(enemy.id)
 
 def draw_stones():
     for stone in stones:
@@ -153,12 +159,10 @@ def handle_events():
                 thrust_distance = 0
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                # Only allow dash if moving (i.e., player is pressing movement keys)
                 if any([pygame.key.get_pressed()[pygame.K_w],
                         pygame.key.get_pressed()[pygame.K_s],
                         pygame.key.get_pressed()[pygame.K_a],
                         pygame.key.get_pressed()[pygame.K_d]]):
-                    # Check cooldown before dashing
                     current_time = pygame.time.get_ticks()
                     if current_time - last_dash_time >= dash_cooldown:
                         is_dashing = True
@@ -169,9 +173,8 @@ def dash():
     if is_dashing:
         player_x += dash_direction[0] * dash_speed * 7
         player_y += dash_direction[1] * dash_speed * 7
-        is_dashing = False  # Reset dash after one use
+        is_dashing = False
 
-# === Main Game Loop ===
 running = True
 while running:
     screen.fill((26, 36, 33))
@@ -179,38 +182,33 @@ while running:
     keys = pygame.key.get_pressed()
     handle_movement(keys)
 
-    # Track the direction of movement
     direction_x, direction_y = 0, 0
     if keys[pygame.K_w]: direction_y -= 1
     if keys[pygame.K_s]: direction_y += 1
     if keys[pygame.K_a]: direction_x -= 1
     if keys[pygame.K_d]: direction_x += 1
 
-    # Normalize direction to ensure consistent dash speed
     if direction_x != 0 or direction_y != 0:
         length = math.sqrt(direction_x**2 + direction_y**2)
         dash_direction = (direction_x / length, direction_y / length)
 
-    # Dash if space is pressed and the player is moving
     dash()
 
-    # Spawn enemies every 3 seconds
     current_time = pygame.time.get_ticks()
     if current_time - last_spawn_time >= enemy_spawn_time:
         spawn_enemy()
         last_spawn_time = current_time
 
-    # Update and draw enemies
     for enemy in enemies:
         enemy.move_towards_player(player_x, player_y)
         enemy.draw()
 
-    # Smooth camera follow
+    enemies = [enemy for enemy in enemies if enemy.is_alive()]
+
     follow_speed = 0.08
     camera_x += (player_x - camera_x) * follow_speed
     camera_y += (player_y - camera_y) * follow_speed
 
-    # === Smooth world offset (sag effect) ===
     target_offset_x = (camera_x - player_x) * 0
     target_offset_y = (camera_y - player_y) * 0
 
