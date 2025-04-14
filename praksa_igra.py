@@ -34,6 +34,12 @@ sword_damage = 1
 player_health = 100
 max_health = 100
 
+# Stamina
+max_stamina = 100
+player_stamina = max_stamina
+stamina_regen_rate = 20  # per second
+dash_stamina_cost = 40
+
 enemy_hit_timers = {}
 invincibility_duration = 1000  # ms
 
@@ -192,13 +198,24 @@ def draw_player(player_draw_x, player_draw_y):
 
 def draw_health_bar():
     bar_width = 250
-    bar_height = 30
+    bar_height = 23
     x = 200
     y = 950
     health_ratio = player_health / max_health
     health_color = (int(255 * (1 - health_ratio)), int(255 * health_ratio), 0)
     pygame.draw.rect(screen, (50, 50, 50), (x, y, bar_width, bar_height))
     pygame.draw.rect(screen, health_color, (x, y, bar_width * health_ratio, bar_height))
+    pygame.draw.rect(screen, (0, 0, 0), (x, y, bar_width, bar_height), 2)
+
+def draw_stamina_bar():
+    bar_width = 250
+    bar_height = 23
+    x = 200
+    y = 990  # Just below health bar
+    stamina_ratio = player_stamina / max_stamina
+    stamina_color = (0, 200, 255)
+    pygame.draw.rect(screen, (50, 50, 50), (x, y, bar_width, bar_height))
+    pygame.draw.rect(screen, stamina_color, (x, y, bar_width * stamina_ratio, bar_height))
     pygame.draw.rect(screen, (0, 0, 0), (x, y, bar_width, bar_height), 2)
 
 def handle_events():
@@ -218,15 +235,16 @@ def handle_events():
                         pygame.key.get_pressed()[pygame.K_a],
                         pygame.key.get_pressed()[pygame.K_d]]):
                     current_time = pygame.time.get_ticks()
-                    if current_time - last_dash_time >= dash_cooldown:
+                    if current_time - last_dash_time >= dash_cooldown and player_stamina >= dash_stamina_cost:
                         is_dashing = True
                         last_dash_time = current_time
 
 def dash():
-    global player_x, player_y, is_dashing, dash_direction
-    if is_dashing:
+    global player_x, player_y, is_dashing, dash_direction, player_stamina
+    if is_dashing and player_stamina >= dash_stamina_cost:
         player_x += dash_direction[0] * dash_speed * 7
         player_y += dash_direction[1] * dash_speed * 7
+        player_stamina -= dash_stamina_cost
         is_dashing = False
 
 running = True
@@ -235,6 +253,12 @@ while running:
 
     keys = pygame.key.get_pressed()
     handle_movement(keys)
+
+    # Regenerate stamina
+    if player_stamina < max_stamina:
+        player_stamina += stamina_regen_rate * (clock.get_time() / 1000)
+        if player_stamina > max_stamina:
+            player_stamina = max_stamina
 
     # Player knockback
     if player_knockback > 0:
@@ -272,7 +296,6 @@ while running:
                 player_health -= enemy.damage
                 enemy_hit_timers[enemy.id] = current_time
 
-                # Apply knockback to player
                 dx = player_x - enemy.x
                 dy = player_y - enemy.y
                 distance = math.sqrt(dx**2 + dy**2)
@@ -313,6 +336,7 @@ while running:
     update_sword(player_draw_x, player_draw_y)
     draw_player(player_draw_x, player_draw_y)
     draw_health_bar()
+    draw_stamina_bar()
 
     pygame.display.flip()
     handle_events()
