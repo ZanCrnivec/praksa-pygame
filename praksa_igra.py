@@ -31,6 +31,17 @@ stones = [(random.randint(-2000, 2000), random.randint(-2000, 2000), random.rand
 
 sword_damage = 1
 
+player_health = 100
+max_health = 100
+
+enemy_hit_timers = {}
+invincibility_duration = 1000  # ms
+
+player_knockback = 0
+player_knockback_velocity = 0
+player_knockback_direction = (0, 0)
+player_knockback_deceleration = 0.9
+
 class Enemy:
     def __init__(self, x, y, speed, damage, color, size, hp):
         self.x = x
@@ -82,9 +93,40 @@ class Enemy:
     def is_alive(self):
         return self.hp > 0
 
+
+class Particle:
+    def __init__(self, x, y, color):
+        self.x = x
+        self.y = y
+        self.radius = random.randint(3, 7)
+        self.color = color
+        self.life = 60
+        self.vx = random.uniform(-4, 4)
+        self.vy = random.uniform(-4, 4)
+
+    def update(self):
+        self.x += self.vx
+        self.y += self.vy
+        self.life -= 1
+        if self.radius > 0:
+            self.radius -= 0.1
+
+    def draw(self):
+        if self.life > 0 and self.radius > 0:
+            alpha = max(0, int(255 * (self.life / 60)))
+            surface = pygame.Surface((self.radius * 2, self.radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(surface, (*self.color, alpha), (self.radius, self.radius), int(self.radius))
+            screen.blit(surface, (self.x - self.radius - camera_x + WIDTH // 2,
+                                  self.y - self.radius - camera_y + HEIGHT // 2))
+
+    def is_alive(self):
+        return self.life > 0 and self.radius > 0
+
+
 enemy_spawn_time = 3000
 last_spawn_time = 0
 enemies = []
+particles = []
 
 def spawn_enemy():
     x = random.randint(-2000, 2000)
@@ -99,10 +141,11 @@ def spawn_enemy():
 
 def handle_movement(keys):
     global player_x, player_y
-    if keys[pygame.K_w]: player_y -= player_speed
-    if keys[pygame.K_s]: player_y += player_speed
-    if keys[pygame.K_a]: player_x -= player_speed
-    if keys[pygame.K_d]: player_x += player_speed
+    if player_knockback == 0:
+        if keys[pygame.K_w]: player_y -= player_speed
+        if keys[pygame.K_s]: player_y += player_speed
+        if keys[pygame.K_a]: player_x -= player_speed
+        if keys[pygame.K_d]: player_x += player_speed
 
 def update_sword(player_draw_x, player_draw_y):
     global sword_thrust, thrust_velocity, thrust_distance, sword_hit_enemies
@@ -147,6 +190,17 @@ def draw_stones():
 def draw_player(player_draw_x, player_draw_y):
     pygame.draw.circle(screen, (255, 255, 255), (player_draw_x, player_draw_y), 35)
 
+def draw_health_bar():
+    bar_width = 250
+    bar_height = 30
+    x = 200
+    y = 950
+    health_ratio = player_health / max_health
+    health_color = (int(255 * (1 - health_ratio)), int(255 * health_ratio), 0)
+    pygame.draw.rect(screen, (50, 50, 50), (x, y, bar_width, bar_height))
+    pygame.draw.rect(screen, health_color, (x, y, bar_width * health_ratio, bar_height))
+    pygame.draw.rect(screen, (0, 0, 0), (x, y, bar_width, bar_height), 2)
+
 def handle_events():
     global sword_thrust, thrust_velocity, thrust_distance, running, is_dashing, last_dash_time, dash_direction
     for event in pygame.event.get():
@@ -182,6 +236,14 @@ while running:
     keys = pygame.key.get_pressed()
     handle_movement(keys)
 
+    # Player knockback
+    if player_knockback > 0:
+        player_x += player_knockback_direction[0] * player_knockback_velocity
+        player_y += player_knockback_direction[1] * player_knockback_velocity
+        player_knockback_velocity *= player_knockback_deceleration
+        if player_knockback_velocity < 1:
+            player_knockback = 0
+
     direction_x, direction_y = 0, 0
     if keys[pygame.K_w]: direction_y -= 1
     if keys[pygame.K_s]: direction_y += 1
@@ -203,7 +265,30 @@ while running:
         enemy.move_towards_player(player_x, player_y)
         enemy.draw()
 
-    enemies = [enemy for enemy in enemies if enemy.is_alive()]
+        dist = math.hypot(enemy.x - player_x, enemy.y - player_y)
+        if dist < enemy.size + 35:
+            last_hit = enemy_hit_timers.get(enemy.id, 0)
+            if current_time - last_hit > invincibility_duration:
+                player_health -= enemy.damage
+                enemy_hit_timers[enemy.id] = current_time
+
+                # Apply knockback to player
+                dx = player_x - enemy.x
+                dy = player_y - enemy.y
+                distance = math.sqrt(dx**2 + dy**2)
+                if distance != 0:
+                    player_knockback_direction = (dx / distance, dy / distance)
+                    player_knockback = 1
+                    player_knockback_velocity = 15
+
+    new_enemies = []
+    for enemy in enemies:
+        if enemy.is_alive():
+            new_enemies.append(enemy)
+        else:
+            for _ in range(20):
+                particles.append(Particle(enemy.x, enemy.y, enemy.color))
+    enemies = new_enemies
 
     follow_speed = 0.08
     camera_x += (player_x - camera_x) * follow_speed
@@ -219,8 +304,15 @@ while running:
     player_draw_y = HEIGHT // 2 + int(world_offset_y)
 
     draw_stones()
+
+    for particle in particles:
+        particle.update()
+        particle.draw()
+    particles = [p for p in particles if p.is_alive()]
+
     update_sword(player_draw_x, player_draw_y)
     draw_player(player_draw_x, player_draw_y)
+    draw_health_bar()
 
     pygame.display.flip()
     handle_events()
