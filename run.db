@@ -1,0 +1,6 @@
+CREATE TABLE AbilityAffixes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ability_group TEXT NOT NULL,
+    type TEXT NOT NULL,
+    description TEXT NOT NULL
+);

@@ -1,0 +1,115 @@
+
+DROP TABLE IF EXISTS SwordAffixes;
+DROP TABLE IF EXISTS AbilityAffixes;
+
+CREATE TABLE SwordAffixes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    description TEXT NOT NULL
+);
+
+CREATE TABLE AbilityAffixes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ability_group TEXT NOT NULL,
+    type TEXT NOT NULL,
+    description TEXT NOT NULL
+);
+
+
+
+
+
+INSERT INTO SwordAffixes (type, description) VALUES
+('minor', '+40% damage on a burning target '),
+('minor', '+40% damage on a freezed target '),
+('minor', '+40% damage on a slowed target '),
+('minor', '+40% damage on a poisoned target '),
+('minor', 'Critical hits +20% damage '),
+('minor', '+50% damage when you are at max HP '),
+('minor', 'Critical hits +30% damage'),
+
+('major', 'Colorless (the highest level applies)'),
+('major', '+15% damage'),
+('major', '+40% damage'),
+('major', '+100% damage inflicted on enemies, +100% damage taken!'),
+('major', '+300% damage inflicted on enemies, +300% damage taken!'),
+('major', 'Poisons the target'),
+('major', 'Burns the target'),
+('major', 'Slows the target'),
+('major', 'Increases movement speed for 5s after kill'),
+
+('legendary', 'Critical hits +50% damage'),
+('legendary', 'Victims release a toxic cloud on death'),
+('legendary', 'Victims release a burning cloud on death'),
+('legendary', 'Victims release a slowness cloud on death'),
+('legendary', '1% hp healed on kill'),
+('legendary', 'Enemies killed explode');
+
+
+
+
+
+
+
+INSERT INTO AbilityAffixes (ability_group, type, description) VALUES
+('BOMB', 'minor', 'cooldown reduction 5%'),
+('BOMB', 'minor', 'cooldown reduction 15%'),
+('BOMB', 'minor', 'area of effect +10%'),
+('BOMB', 'minor', 'area of effect +15%'),
+('BOMB', 'minor', 'damage +5%'),
+('BOMB', 'minor', 'damage +10%'),
+('BOMB', 'minor', '+40% damage on a burning target'),
+('BOMB', 'minor', '+40% damage on a freezed target'),
+('BOMB', 'minor', '+40% damage on a slowed target'),
+('BOMB', 'minor', '+40% damage on a poisoned target'),
+('BOMB', 'major', 'Colorless (the highest level applies)'),
+('BOMB', 'major', 'cooldown reduction 30%'),
+('BOMB', 'major', 'cooldown reduction 50%'),
+('BOMB', 'major', 'area of effect +30%'),
+('BOMB', 'major', 'area of effect +50%'),
+('BOMB', 'major', 'damage +30%'),
+('BOMB', 'major', 'damage +50%'),
+('BOMB', 'legendary', 'explosion burns enemies'),
+('BOMB', 'legendary', 'explosion poisons enemies'),
+('BOMB', 'legendary', 'explosion slows enemies'),
+
+('KNIFE', 'minor', 'cooldown reduction 5%'),
+('KNIFE', 'minor', 'cooldown reduction 15%'),
+('KNIFE', 'minor', 'area of effect +10%'),
+('KNIFE', 'minor', 'area of effect +15%'),
+('KNIFE', 'minor', 'damage +5%'),
+('KNIFE', 'minor', 'damage +10%'),
+('KNIFE', 'minor', '+40% damage on a burning target'),
+('KNIFE', 'minor', '+40% damage on a freezed target'),
+('KNIFE', 'minor', '+40% damage on a slowed target'),
+('KNIFE', 'minor', '+40% damage on a poisoned target'),
+('KNIFE', 'major', 'Colorless (the highest level applies)'),
+('KNIFE', 'major', 'cooldown reduction 30%'),
+('KNIFE', 'major', 'cooldown reduction 50%'),
+('KNIFE', 'major', 'damage +30%'),
+('KNIFE', 'major', 'damage +50%'),
+('KNIFE', 'major', 'Poisons the target'),
+('KNIFE', 'major', 'Burns the target'),
+('KNIFE', 'major', 'Slows the target'),
+('KNIFE', 'major', 'Increases movement speed for 5s after kill'),
+('KNIFE', 'legendary', 'Critical hits +50% damage'),
+('KNIFE', 'legendary', 'Victims release a toxic cloud on death'),
+('KNIFE', 'legendary', 'Victims release a burning cloud on death'),
+('KNIFE', 'legendary', 'Victims release a slowness cloud on death'),
+('KNIFE', 'legendary', '1% hp healed on kill'),
+('KNIFE', 'legendary', 'Enemies killed explode'),
+
+('BLAST', 'minor', 'cooldown reduction 5%'),
+('BLAST', 'minor', 'cooldown reduction 15%'),
+('BLAST', 'minor', 'area of effect +10%'),
+('BLAST', 'minor', 'area of effect +15%'),
+('BLAST', 'minor', 'damage +5%'),
+('BLAST', 'minor', 'damage +10%'),
+('BLAST', 'major', 'Colorless (the highest level applies)'),
+('BLAST', 'major', 'cooldown reduction 30%'),
+('BLAST', 'major', 'cooldown reduction 50%'),
+('BLAST', 'major', 'damage +30%'),
+('BLAST', 'major', 'damage +50%'),
+('BLAST', 'legendary', '+50% area of effect'),
+('BLAST', 'legendary', '+50% damage'),
+('BLAST', 'legendary', '-50% cooldown');
